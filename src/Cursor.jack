@@ -1,0 +1,7 @@
+// Represents the placement cursor controlled by the player
+class Cursor {
+
+    field int x;
+    field int y;
+    
+}

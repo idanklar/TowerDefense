@@ -1,4 +1,4 @@
-
+// Main game controller
 class Game {
 
     field boolean running;
@@ -11,12 +11,11 @@ class Game {
 
     // main game loop
     method void run() {
-
         do Screen.clearScreen();
 
         while (running) {
 
-           
+           // we'll add later stuff
 
             do Sys.wait(50);
         }

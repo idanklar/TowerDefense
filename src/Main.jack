@@ -1,6 +1,5 @@
 // Main class for the Tower Defence game
 class Main {
-
     // init a new game and starts it 
     function void main() {
         var Game game;
