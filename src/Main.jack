@@ -1,0 +1,14 @@
+/** Entry point for Tower Defense (Project 9). */
+class Main {
+    function void main() {
+        do Screen.clearScreen();
+        do Output.moveCursor(0, 0);
+        do Output.printString("Tower Defense - booting...");
+        do Output.println();
+
+        // Temporary "hold" so you can see it runs
+        do Sys.wait(1000);
+
+        return;
+    }
+}
