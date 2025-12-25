@@ -1,0 +1,26 @@
+
+class Game {
+
+    field boolean running;
+
+    // constructor
+    constructor Game new() {
+        let running = true;
+        return this;
+    }
+
+    // main game loop
+    method void run() {
+
+        do Screen.clearScreen();
+
+        while (running) {
+
+           
+
+            do Sys.wait(50);
+        }
+
+        return;
+    }
+}
