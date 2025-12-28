@@ -2,20 +2,38 @@
 class Game {
 
     field boolean running;
+    field Cursor cursor;
 
     // constructor
     constructor Game new() {
         let running = true;
+
+        // starts cursor in the middle of the screen
+        let cursor = Cursor.new(16, 8);
+
         return this;
     }
 
     // main game loop
     method void run() {
+        var int key;
+
         do Screen.clearScreen();
 
         while (running) {
 
-           // we'll add later stuff
+            let key = Keyboard.keyPressed();
+
+            // quit if key = 'q'
+            if (key = 113) {
+                let running = false;
+            }
+
+            do cursor.erase();
+
+            do cursor.move(key);
+
+            do cursor.draw();
 
             do Sys.wait(50);
         }

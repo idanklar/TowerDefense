@@ -1,7 +1,71 @@
-// Represents the placement cursor controlled by the player
+// represents the placement cursor controlled by the player.
 class Cursor {
 
     field int x;
     field int y;
-    
+
+    field int prevX;
+    field int prevY;
+
+    // creates a new cursor at the starting position
+    constructor Cursor new(int startX, int startY) {
+        let x = startX;
+        let y = startY;
+        let prevX = x;
+        let prevY = y;
+        return this;
+    }
+    // erasing the prev location of the cursor
+    method void erase() {
+        var int px, py;
+
+        let px = prevX * 16;
+        let py = prevY * 16;
+
+        // erasing by coloring white the last location
+        do Screen.setColor(false);
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+
+        return;
+    }
+
+    /// move the cursor according to the key pressed
+    method void move(int key) {
+        let prevX = x;
+        let prevY = y;
+
+        // left arrow
+        if (key = 130) {
+            let x = x - 1;
+        }
+
+        // right arrow
+        if (key = 132) {
+            let x = x + 1;
+        }
+
+        // up arrow
+        if (key = 131) {
+            let y = y - 1;
+        }
+
+        // down arrow
+        if (key = 133) {
+            let y = y + 1;
+        }
+
+        return;
+    }
+
+    // drawing a rectangle cursor
+    method void draw() {
+        var int px, py;
+
+        let px = x * 16;
+        let py = y * 16;
+        do Screen.setColor(true);
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+
+        return;
+    }
 }
