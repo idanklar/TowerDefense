@@ -1,4 +1,5 @@
-// Main class for the Tower Defence game
+// Entry point of the program.
+// Creates the game object and starts the main game loop.
 class Main {
     // init a new game and starts it 
     function void main() {

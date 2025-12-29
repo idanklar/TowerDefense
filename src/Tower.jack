@@ -1,0 +1,57 @@
+// Represents a tower placed by the player.
+// Has a fixed range and cooldown,
+// and damages enemies that enter its range.
+class Tower {
+    field int x, y;
+    field int range;
+    field int cooldown;
+    field int cdLeft;
+
+    constructor Tower new(int startX, int startY) {
+        let x = startX;
+        let y = startY;
+        let range = 5;
+        let cooldown = 6;
+        let cdLeft = 0;
+        return this;
+    }
+
+    method int getX() { return x; }
+    method int getY() { return y; }
+
+    method void draw() {
+        var int px, py;
+        let px = x * 16;
+        let py = y * 16;
+
+        do Screen.setColor(true);
+        do Screen.drawRectangle(px + 2, py + 10, px + 13, py + 14);
+        do Screen.drawRectangle(px + 6, py + 4, px + 9, py + 10);
+        do Screen.drawRectangle(px + 4, py + 2, px + 11, py + 4);
+
+        return;
+    }
+
+    method boolean inRange(int ex, int ey) {
+        var int dx, dy;
+
+        let dx = ex - x;
+        if (dx < 0) { let dx = -dx; }
+
+        let dy = ey - y;
+        if (dy < 0) { let dy = -dy; }
+
+        // (dx+dy) <= range
+        if (~((dx + dy) > range)) { return true; }
+        return false;
+    }
+
+    method boolean canShoot() {
+        if (cdLeft > 0) {
+            let cdLeft = cdLeft - 1;
+            return false;
+        }
+        let cdLeft = cooldown;
+        return true;
+    }
+}

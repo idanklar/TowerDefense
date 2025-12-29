@@ -1,152 +1,241 @@
-// Main game controller
-class Game {
+// Controls the main game logic.
+// Manages the game loop, input handling, path drawing,
+// enemies, towers, and interactions between them.
 
+class Game {
     field boolean running;
+
     field Cursor cursor;
+
     field Enemy enemy;
+    field int enemyTick;
+
     field Array pathX;
     field Array pathY;
     field int pathLen;
 
+    field Array towers;
+    field int towerCount;
+    field boolean spaceHeld;
 
-    // constructor
     constructor Game new() {
         let running = true;
 
-        // starts cursor in the middle of the screen
         let cursor = Cursor.new(16, 8);
 
-        // Define waypoints (corners) for the enemy path
+        let enemyTick = 0;
+
+        let towerCount = 0;
+        let towers = Array.new(8);
+        let spaceHeld = false;
+
+        // waypoints for the curly path (grid coords)
         let pathLen = 6;
         let pathX = Array.new(pathLen);
         let pathY = Array.new(pathLen);
 
-        let pathX[0] = 0;  let pathY[0] = 11;   
-        let pathX[1] = 13; let pathY[1] = 11;   
-        let pathX[2] = 13; let pathY[2] = 6;    
-        let pathX[3] = 23; let pathY[3] = 6;    
-        let pathX[4] = 23; let pathY[4] = 12;  
-        let pathX[5] = 31; let pathY[5] = 12;  
+        let pathX[0] = 0;  let pathY[0] = 11;
+        let pathX[1] = 13; let pathY[1] = 11;
+        let pathX[2] = 13; let pathY[2] = 6;
+        let pathX[3] = 23; let pathY[3] = 6;
+        let pathX[4] = 23; let pathY[4] = 12;
+        let pathX[5] = 31; let pathY[5] = 12;
 
-        // Create one enemy at the start
-        let enemy = Enemy.new(pathX[0], pathY[0]);
-
+        let enemy = Enemy.new(pathX[0], pathY[0], 5);
 
         return this;
     }
 
-    // draw an enemy line
-    method void drawPath() {
-    do Screen.setColor(true);
-
-    do drawCellRect(0, 11, 13, 12);
-
-    do drawCellRect(12, 6, 13, 12);
-
-    do drawCellRect(12, 6, 23, 7);
-
-    do drawCellRect(22, 6, 23, 13);
-
-    do drawCellRect(22, 12, 31, 13);
-
-    return;
-}
-
-
     method void drawCellRect(int x1, int y1, int x2, int y2) {
-    var int px1, py1, px2, py2;
+        var int px1, py1, px2, py2;
 
-    let px1 = x1 * 16;
-    let py1 = y1 * 16;
-    let px2 = x2 * 16 + 15;
-    let py2 = y2 * 16 + 15;
+        let px1 = x1 * 16;
+        let py1 = y1 * 16;
+        let px2 = x2 * 16 + 15;
+        let py2 = y2 * 16 + 15;
 
-    do Screen.drawRectangle(px1, py1, px2, py2);
-    return;
+        do Screen.drawRectangle(px1, py1, px2, py2);
+        return;
     }
 
-    // makes the path not completly black
-    method void drawCorridor(int x1, int y1, int x2, int y2) {
-    do Screen.setColor(true);
-    do drawCellRect(x1, y1, x2, y2);
+    method void drawPath() {
+        do Screen.setColor(true);
 
-    if ((x2 - x1 > 1) & (y2 - y1 > 1)) {
-        do Screen.setColor(false);
-        do drawCellRect(x1 + 1, y1 + 1, x2 - 1, y2 - 1);
+        // segment 1
+        do drawCellRect(0, 11, 13, 12);
+        // segment 2
+        do drawCellRect(12, 6, 13, 12);
+        // segment 3
+        do drawCellRect(12, 6, 23, 7);
+        // segment 4
+        do drawCellRect(22, 6, 23, 13);
+        // segment 5
+        do drawCellRect(22, 12, 31, 13);
+
+        return;
     }
-
-    return;
-}
-
-
 
     method boolean isPathCell(int x, int y) {
-    var boolean on;
-    let on = false;
+        var boolean on;
+        let on = false;
 
-    if ((y = 11) | (y = 12)) {
-        if ((~(x < 0)) & (~(x > 13))) {
-            let on = true;
+        // seg 1: y=11..12, x=0..13
+        if ((y = 11) | (y = 12)) {
+            if (~((x < 0) | (x > 13))) { let on = true; }
         }
+
+        // seg 2: x=12..13, y=6..12
+        if ((x = 12) | (x = 13)) {
+            if (~((y < 6) | (y > 12))) { let on = true; }
+        }
+
+        // seg 3: y=6..7, x=12..23
+        if ((y = 6) | (y = 7)) {
+            if (~((x < 12) | (x > 23))) { let on = true; }
+        }
+
+        // seg 4: x=22..23, y=6..13
+        if ((x = 22) | (x = 23)) {
+            if (~((y < 6) | (y > 13))) { let on = true; }
+        }
+
+        // seg 5: y=12..13, x=22..31
+        if ((y = 12) | (y = 13)) {
+            if (~((x < 22) | (x > 31))) { let on = true; }
+        }
+
+        return on;
     }
 
-    if ((x = 12) | (x = 13)) {
-        if ((~(y < 6)) & (~(y > 12))) {
-            let on = true;
+    method int findTowerIndex(int x, int y) {
+        var int i;
+        var Tower t;
+
+        let i = 0;
+        while (i < towerCount) {
+            let t = towers[i];
+            if ((t.getX() = x) & (t.getY() = y)) {
+                return i;
+            }
+            let i = i + 1;
         }
+        return -1;
     }
 
-    if ((y = 6) | (y = 7)) {
-        if ((~(x < 12)) & (~(x > 23))) {
-            let on = true;
-        }
-    }
+    method void removeTowerAt(int idx) {
+    var int i;
+    var int tx, ty;
+    var Tower t;
 
-    if ((x = 22) | (x = 23)) {
-        if ((~(y < 6)) & (~(y > 13))) {
-            let on = true;
-        }
-    }
+    let t = towers[idx];
+    let tx = t.getX();
+    let ty = t.getY();
 
-    if ((y = 12) | (y = 13)) {
-        if ((~(x < 22)) & (~(x > 31))) {
-            let on = true;
-        }
-    }
+    do Screen.setColor(false);
+    do drawCellRect(tx, ty, tx, ty);
 
-    return on;
+    let i = idx;
+    while (i < (towerCount - 1)) {
+        let towers[i] = towers[i + 1];
+        let i = i + 1;
+    }
+    let towerCount = towerCount - 1;
+    return;
 }
 
 
+    method void redrawTowers() {
+    var int i;
+    var Tower t;
 
-    // main game loop
+    let i = 0;
+    while (i < towerCount) {
+        let t = towers[i];
+        do t.draw();
+        let i = i + 1;
+    }
+    return;
+}
+
+
+    method void towersAttack() {
+        var int i;
+        var Tower t;
+
+        if (~enemy.isAlive()) { return; }
+
+        let i = 0;
+        while (i < towerCount) {
+            let t = towers[i];
+
+            if (t.inRange(enemy.getX(), enemy.getY())) {
+                if (t.canShoot()) {
+                    do enemy.takeDamage(1);
+                }
+            }
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
     method void run() {
         var int key;
+        var int idx;
 
         do Screen.clearScreen();
-
         do drawPath();
 
         while (running) {
 
             let key = Keyboard.keyPressed();
+            if (key = 113) { let running = false; }
 
-            // quit if key = 'q'
-            if (key = 113) {
-                let running = false;
-            }
-
+            // cursor
             do cursor.erase(isPathCell(cursor.getPrevX(), cursor.getPrevY()));
-
             do cursor.move(key);
-
             do cursor.draw();
 
-            if (enemy.isAlive()) {
-                do enemy.erase(isPathCell(enemy.getPrevX(), enemy.getPrevY()));
-                do enemy.update(pathX, pathY, pathLen);
-                do enemy.draw();
+            // space press (debounced)
+            if (key = 32) {
+                if (~spaceHeld) {
+                    let spaceHeld = true;
+
+                    let idx = findTowerIndex(cursor.getX(), cursor.getY());
+
+                    // if tower exists here -> remove it
+                    if (~(idx = -1)) {
+                        do removeTowerAt(idx);
+                    } else {
+                        // place new tower if possible
+                        if (towerCount < 8) {
+                            if (~isPathCell(cursor.getX(), cursor.getY())) {
+                                let towers[towerCount] = Tower.new(cursor.getX(), cursor.getY());
+                                let towerCount = towerCount + 1;
+                            }
+                        }
+                    }
+                }
+            } else {
+                let spaceHeld = false;
             }
+
+            // enemy timing
+            let enemyTick = enemyTick + 1;
+            if (enemyTick = 6) {
+                let enemyTick = 0;
+                if (enemy.isAlive()) {
+                    do enemy.erase(isPathCell(enemy.getPrevX(), enemy.getPrevY()));
+                    do enemy.update(pathX, pathY, pathLen);
+                }
+            }
+
+            // combat + redraw
+            do towersAttack();
+            if (enemy.isAlive()) { do enemy.draw(); }
+            do redrawTowers();
+
             do Sys.wait(50);
         }
 

@@ -1,13 +1,10 @@
-// represents the placement cursor controlled by the player.
+// Represents the player cursor.
+// Handles movement, drawing, and restoring the background
+// when the cursor moves across the screen.
 class Cursor {
+    field int x, y;
+    field int prevX, prevY;
 
-    field int x;
-    field int y;
-
-    field int prevX;
-    field int prevY;
-
-    // creates a new cursor at the starting position
     constructor Cursor new(int startX, int startY) {
         let x = startX;
         let y = startY;
@@ -15,81 +12,49 @@ class Cursor {
         let prevY = y;
         return this;
     }
-    // getters
+
+    method int getX() { return x; }
+    method int getY() { return y; }
     method int getPrevX() { return prevX; }
     method int getPrevY() { return prevY; }
-    
-    // erasing the prev location of the cursor
+
     method void erase(boolean wasOnPath) {
-    var int px, py;
+        var int px, py;
 
-    let px = prevX * 16;
-    let py = prevY * 16;
+        if (wasOnPath) { do Screen.setColor(true); }
+        else { do Screen.setColor(false); }
 
-    if (wasOnPath) {
-        do Screen.setColor(true);   
-    } else {
-        do Screen.setColor(false);  
+        let px = prevX * 16;
+        let py = prevY * 16;
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+        return;
     }
 
-    do Screen.drawRectangle(px, py, px + 15, py + 15);
-    return;
-}
-
-    /// move the cursor according to the key pressed
     method void move(int key) {
         let prevX = x;
         let prevY = y;
 
-        // left arrow
-        if (key = 130) {
-            let x = x - 1;
-        }
+        if (key = 130) { let x = x - 1; }
+        if (key = 132) { let x = x + 1; }
+        if (key = 131) { let y = y - 1; }
+        if (key = 133) { let y = y + 1; }
 
-        // right arrow
-        if (key = 132) {
-            let x = x + 1;
-        }
+        if (x < 0) { let x = 0; }
+        if (x > 31) { let x = 31; }
+        if (y < 0) { let y = 0; }
+        if (y > 15) { let y = 15; }
 
-        // up arrow
-        if (key = 131) {
-            let y = y - 1;
-        }
-
-        // down arrow
-        if (key = 133) {
-            let y = y + 1;
-        }
-
-        // jump to legal grid
-        if (x < 0) {
-        let x = 0;
-        }
-
-        if (x > 31) {
-            let x = 31;
-        }
-
-        if (y < 0) {
-            let y = 0;
-        }
-
-        if (y > 15) {
-            let y = 15;
-        }
-
-    return;
+        return;
     }
 
-    // drawing a rectangle cursor
     method void draw() {
         var int px, py;
 
+        do Screen.setColor(true);
         let px = x * 16;
         let py = y * 16;
-        do Screen.setColor(true);
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
 
+        do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 12);
         return;
     }
 }
