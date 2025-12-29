@@ -15,19 +15,26 @@ class Cursor {
         let prevY = y;
         return this;
     }
+    // getters
+    method int getPrevX() { return prevX; }
+    method int getPrevY() { return prevY; }
+    
     // erasing the prev location of the cursor
-    method void erase() {
-        var int px, py;
+    method void erase(boolean wasOnPath) {
+    var int px, py;
 
-        let px = prevX * 16;
-        let py = prevY * 16;
+    let px = prevX * 16;
+    let py = prevY * 16;
 
-        // erasing by coloring white the last location
-        do Screen.setColor(false);
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
-
-        return;
+    if (wasOnPath) {
+        do Screen.setColor(true);   
+    } else {
+        do Screen.setColor(false);  
     }
+
+    do Screen.drawRectangle(px, py, px + 15, py + 15);
+    return;
+}
 
     /// move the cursor according to the key pressed
     method void move(int key) {
@@ -54,7 +61,24 @@ class Cursor {
             let y = y + 1;
         }
 
-        return;
+        // jump to legal grid
+        if (x < 0) {
+        let x = 0;
+        }
+
+        if (x > 31) {
+            let x = 31;
+        }
+
+        if (y < 0) {
+            let y = 0;
+        }
+
+        if (y > 15) {
+            let y = 15;
+        }
+
+    return;
     }
 
     // drawing a rectangle cursor

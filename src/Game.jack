@@ -3,6 +3,11 @@ class Game {
 
     field boolean running;
     field Cursor cursor;
+    field Enemy enemy;
+    field Array pathX;
+    field Array pathY;
+    field int pathLen;
+
 
     // constructor
     constructor Game new() {
@@ -11,14 +16,116 @@ class Game {
         // starts cursor in the middle of the screen
         let cursor = Cursor.new(16, 8);
 
+        // Define waypoints (corners) for the enemy path
+        let pathLen = 6;
+        let pathX = Array.new(pathLen);
+        let pathY = Array.new(pathLen);
+
+        let pathX[0] = 0;  let pathY[0] = 11;   
+        let pathX[1] = 13; let pathY[1] = 11;   
+        let pathX[2] = 13; let pathY[2] = 6;    
+        let pathX[3] = 23; let pathY[3] = 6;    
+        let pathX[4] = 23; let pathY[4] = 12;  
+        let pathX[5] = 31; let pathY[5] = 12;  
+
+        // Create one enemy at the start
+        let enemy = Enemy.new(pathX[0], pathY[0]);
+
+
         return this;
     }
+
+    // draw an enemy line
+    method void drawPath() {
+    do Screen.setColor(true);
+
+    do drawCellRect(0, 11, 13, 12);
+
+    do drawCellRect(12, 6, 13, 12);
+
+    do drawCellRect(12, 6, 23, 7);
+
+    do drawCellRect(22, 6, 23, 13);
+
+    do drawCellRect(22, 12, 31, 13);
+
+    return;
+}
+
+
+    method void drawCellRect(int x1, int y1, int x2, int y2) {
+    var int px1, py1, px2, py2;
+
+    let px1 = x1 * 16;
+    let py1 = y1 * 16;
+    let px2 = x2 * 16 + 15;
+    let py2 = y2 * 16 + 15;
+
+    do Screen.drawRectangle(px1, py1, px2, py2);
+    return;
+    }
+
+    // makes the path not completly black
+    method void drawCorridor(int x1, int y1, int x2, int y2) {
+    do Screen.setColor(true);
+    do drawCellRect(x1, y1, x2, y2);
+
+    if ((x2 - x1 > 1) & (y2 - y1 > 1)) {
+        do Screen.setColor(false);
+        do drawCellRect(x1 + 1, y1 + 1, x2 - 1, y2 - 1);
+    }
+
+    return;
+}
+
+
+
+    method boolean isPathCell(int x, int y) {
+    var boolean on;
+    let on = false;
+
+    if ((y = 11) | (y = 12)) {
+        if ((~(x < 0)) & (~(x > 13))) {
+            let on = true;
+        }
+    }
+
+    if ((x = 12) | (x = 13)) {
+        if ((~(y < 6)) & (~(y > 12))) {
+            let on = true;
+        }
+    }
+
+    if ((y = 6) | (y = 7)) {
+        if ((~(x < 12)) & (~(x > 23))) {
+            let on = true;
+        }
+    }
+
+    if ((x = 22) | (x = 23)) {
+        if ((~(y < 6)) & (~(y > 13))) {
+            let on = true;
+        }
+    }
+
+    if ((y = 12) | (y = 13)) {
+        if ((~(x < 22)) & (~(x > 31))) {
+            let on = true;
+        }
+    }
+
+    return on;
+}
+
+
 
     // main game loop
     method void run() {
         var int key;
 
         do Screen.clearScreen();
+
+        do drawPath();
 
         while (running) {
 
@@ -29,12 +136,17 @@ class Game {
                 let running = false;
             }
 
-            do cursor.erase();
+            do cursor.erase(isPathCell(cursor.getPrevX(), cursor.getPrevY()));
 
             do cursor.move(key);
 
             do cursor.draw();
 
+            if (enemy.isAlive()) {
+                do enemy.erase(isPathCell(enemy.getPrevX(), enemy.getPrevY()));
+                do enemy.update(pathX, pathY, pathLen);
+                do enemy.draw();
+            }
             do Sys.wait(50);
         }
 

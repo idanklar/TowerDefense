@@ -1,0 +1,89 @@
+// single enemt that moves along the path 
+class Enemy {
+
+    field int x;
+    field int y;
+
+    field int prevX;
+    field int prevY;
+
+    field int waypoint;   
+    field boolean alive;
+
+    constructor Enemy new(int startX, int startY) {
+        let x = startX;
+        let y = startY;
+
+        let prevX = x;
+        let prevY = y;
+
+        let waypoint = 0;
+        let alive = true;
+
+        return this;
+    }
+
+    method boolean isAlive() {
+        return alive;
+    }
+
+    method int getX() { return x; }
+    method int getY() { return y; }
+    method int getPrevX() { return prevX; }
+    method int getPrevY() { return prevY; }
+
+    // move to the next possible waypoint
+    method void update(Array pathX, Array pathY, int pathLen) {
+        var int tx, ty;
+
+        if (~alive) { return; }
+
+        let prevX = x;
+        let prevY = y;
+
+        // enemy escaped
+        if (~(waypoint < pathLen)) {
+            let alive = false;
+            return;
+        }
+
+        let tx = pathX[waypoint];
+        let ty = pathY[waypoint];
+
+        if (x < tx) { let x = x + 1; }
+        if (x > tx) { let x = x - 1; }
+        if (y < ty) { let y = y + 1; }
+        if (y > ty) { let y = y - 1; }
+
+        if ((x = tx) & (y = ty)) {
+            let waypoint = waypoint + 1;
+        }
+
+        return;
+    }
+
+    method void draw() {
+        var int px, py;
+
+        do Screen.setColor(false);
+
+        let px = x * 16;
+        let py = y * 16;
+
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+        return;
+    }
+
+    method void erase(boolean wasOnPath) {
+        var int px, py;
+
+        if (wasOnPath) { do Screen.setColor(true); }
+        else { do Screen.setColor(false); }
+
+        let px = prevX * 16;
+        let py = prevY * 16;
+
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+        return;
+    }
+}
