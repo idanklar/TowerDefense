@@ -51,6 +51,20 @@ class Enemy {
         return;
     }
 
+    method void eraseCurrent(boolean wasOnPath) {
+    var int px, py;
+
+    if (wasOnPath) { do Screen.setColor(true); }
+    else { do Screen.setColor(false); }
+
+    let px = x * 16;
+    let py = y * 16;
+
+    do Screen.drawRectangle(px, py, px + 15, py + 15);
+    return;
+    }
+
+
     method void update(Array pathX, Array pathY, int pathLen) {
         var int tx, ty;
 
