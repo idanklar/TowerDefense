@@ -1,9 +1,9 @@
-// Tower: a placed defense object that damages enemies in range with a cooldown.
+// Represents a defense tower
 class Tower {
     field int x, y;
     field int cooldown;
 
-    // Creates a tower at a grid cell.
+    // Constructor
     constructor Tower new(int ax, int ay) {
         let x = ax;
         let y = ay;
@@ -11,7 +11,7 @@ class Tower {
         return this;
     }
 
-    // Draws the Arrow Tower Sprite.
+    // Draws the tower
     method void draw() {
         var int memAddress;
         
@@ -44,7 +44,7 @@ class Tower {
         return;
     }
 
-    // Checks if an enemy at (ex,ey) is in tower range
+    // Checks if enemy is in range
     method boolean inRange(int ex, int ey) {
         var int dx, dy, d;
         let dx = x - ex;
@@ -57,7 +57,7 @@ class Tower {
         return false;
     }
 
-    // Returns true only when the tower may shoot; otherwise decreases cooldown.
+    // Checks if tower can shoot
     method boolean canShoot() {
         if (cooldown = 0) {
             let cooldown = 16; // 2x (was 8)

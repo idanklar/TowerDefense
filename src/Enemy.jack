@@ -1,4 +1,4 @@
-// Enemy: moves along a predefined path and can take damage until it dies.
+// Represents an enemy
 class Enemy {
     field int x, y;
     field int prevX, prevY;
@@ -7,7 +7,7 @@ class Enemy {
     field boolean escaped;
     field int pathIndex;
 
-    // Creates an enemy (inactive until reset()).
+    // Constructor
     constructor Enemy new() {
         let x = 0;
         let y = 0;
@@ -20,7 +20,7 @@ class Enemy {
         return this;
     }
 
-    // Spawns / respawns the enemy at the start of the path with given HP.
+    // Resets the enemy
     method void reset(int startX, int startY, int startHp) {
         let x = startX;
         let y = startY;
@@ -34,7 +34,7 @@ class Enemy {
         return;
     }
 
-    // Advances the enemy by one step along the path arrays.
+    // Moves the enemy
     method void step(Array pathX, Array pathY, int pathLen) {
         if (~alive) { return; }
 
@@ -53,23 +53,19 @@ class Enemy {
         return;
     }
 
-    // Draws the enemy as a Skeleton Sprite (White bones on Black path)
+    // Draws the enemy
     method void draw() {
         var int memAddress;
+        var int barWidth;
+        var int px, py;
         
         if (~alive) { return; }
 
         let memAddress = 16384 + (y * 512) + x;
-        // Skeleton Bitmap (16x16)
-        // Designed to be White (0) on Black (1) or vice versa.
-        // Since we are on a BLACK path (color true), we want lines to be WHITE (color false).
-        // Screen.setColor(true) draws black. Screen.setColor(false) draws white.
-        // But Memory.poke sets the 16-bit word directly.
-        // 1 = Black, 0 = White.
-        // We want the path (around the skeleton) to be Black (1). The Skeleton to be White (0).
-        // So we need a mask where 1s are background and 0s are bones.
-
-        // Row 0-15
+        
+        // Skeleton Sprite (Rows 0-13)
+        // Row 15 reserved for HP Bar
+        
         do Memory.poke(memAddress+0, -1);          // 1111111111111111 (Black bg)
         do Memory.poke(memAddress+32, -4089);      // 1111000000000111 (Head top)
         do Memory.poke(memAddress+64, -4089);      // 1111000000000111
@@ -84,16 +80,28 @@ class Enemy {
         do Memory.poke(memAddress+352, -13101);    
         do Memory.poke(memAddress+384, -13101);    
         do Memory.poke(memAddress+416, -13101);    
-        do Memory.poke(memAddress+448, -13101);    
-        do Memory.poke(memAddress+480, -1);        
+        do Memory.poke(memAddress+448, -1);        // Spacer (Black)
+        do Memory.poke(memAddress+480, -1);        // BG for Bar (Black)
         
-        // HP Bar is drawn separately in Game.jack now? No, HUD is general. 
-        // We removed individual HP bars for sprite clarity, or we overlay them?
-        // Let's implement a simple overlay line if needed, but for now just the sprite.
+        // Draw HP Bar (White on Black)
+        if (maxHp > 0) {
+            let barWidth = (hp * 16) / maxHp;
+            if (barWidth > 0) {
+                // Ensure length is clamped
+                if (barWidth > 16) { let barWidth = 16; }
+                
+                let px = x * 16;
+                let py = y * 16;
+                
+                do Screen.setColor(false); // White
+                do Screen.drawRectangle(px, py + 15, px + barWidth - 1, py + 15);
+            }
+        }
+        
         return;
     }
 
-    // Erases the enemy by restoring the background of the previous cell.
+    // Erases the enemy
     method void erase(boolean prevOnPath) {
         var int px, py;
 
@@ -110,7 +118,7 @@ class Enemy {
     }
 
 
-    // Applies damage; if hp drops below 1 -> dead.
+    // Takes damage
     method void takeDamage(int d) {
         if (~alive) { return; }
         let hp = hp - d;

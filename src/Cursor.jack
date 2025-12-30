@@ -1,9 +1,9 @@
-// Cursor: controlled by the keyboard, used to place/remove towers on the grid.
+// Represents the player cursor
 class Cursor {
     field int x, y;
     field int prevX, prevY;
 
-    // Creates a cursor at a starting grid cell.
+    // Constructor
     constructor Cursor new(int startX, int startY) {
         let x = startX;
         let y = startY;
@@ -12,7 +12,7 @@ class Cursor {
         return this;
     }
 
-    // Moves the cursor by one cell according to arrow keys.
+    // Moves the cursor based on key press
     method void move(int key) {
         let prevX = x;
         let prevY = y;
@@ -25,7 +25,7 @@ class Cursor {
         return;
     }
 
-    // Draws the cursor as a hollow box around the current cell.
+    // Draws the cursor
     method void draw() {
         var int px, py;
         let px = x * 16;
@@ -39,7 +39,7 @@ class Cursor {
         return;
     }
 
-    // Erases the cursor from its previous cell by repainting the background.
+    // Erases the cursor
     method void erase(boolean prevOnPath) {
         var int px, py;
         let px = prevX * 16;

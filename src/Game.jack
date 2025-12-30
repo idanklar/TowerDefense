@@ -1,4 +1,4 @@
-// Game: main controller (map, waves, tower placement, enemy spawning, main loop).
+// Main game class
 class Game {
     field boolean running;
     field boolean inWave;
@@ -39,12 +39,12 @@ class Game {
 
     field boolean inWave;
     
-    // Builds the game state and allocates arrays.
+    // Constructor
     constructor Game new() {
         let running = true;
         let inWave = false;
 
-        let towers = Array.new(8);
+        let towers = Array.new(30);
         let towerCount = 0;
 
         let enemies = Array.new(4);
@@ -76,7 +76,7 @@ class Game {
         let sWave = "Wave: ";
         let sEnemies = "Enemies: ";
         let sSpace = "   ";
-        let sMoney = "Gold: ";
+        let sMoney = "Coins: ";
         let sLives = "Lives: ";
         let sPressStart = "Press 's' to start Wave ";
 
@@ -84,19 +84,22 @@ class Game {
         let lives = 20;
 
         do Screen.clearScreen();
-        do buildPath();
-        do drawPath();
-        
-        // Initial setup for Wave 1 (but wait for user to start)
-        do startNextWave(); 
+        do Screen.clearScreen();
+        // Path building moved to run() after selection
         
         return this;
     }
 
-    // Main game loop.
+    // Main game loop
     method void run() {
         var int key;
         var int idx;
+        var int mapChoice;
+
+        let mapChoice = showStartScreen();
+        do buildPath(mapChoice);
+        do drawPath();
+        do startNextWave();
 
         while (running) {
             let key = Keyboard.keyPressed();
@@ -118,7 +121,7 @@ class Game {
                     if (~(idx = -1)) {
                         do removeTowerAt(idx);
                     } else {
-                        if (towerCount < 8) {
+                        if (towerCount < 30) {
                             if (money > 49) {
                                 if (~isPathCell(cursor.getX(), cursor.getY())) {
                                     let towers[towerCount] = Tower.new(cursor.getX(), cursor.getY());
@@ -186,7 +189,7 @@ class Game {
         return;
     }
 
-    // Spawns enemies over time until reaching the wave target.
+    // Spawns enemies
     method void handleSpawning() {
         var int hp;
         var int i;
@@ -220,7 +223,7 @@ class Game {
         return;
     }
 
-    // Moves all alive enemies one step and erases their previous position.
+    // Moves all enemies
     method void stepEnemies() {
         var int i;
         var Enemy e;
@@ -249,7 +252,7 @@ class Game {
         return;
     }
 
-    // Towers shoot: each tower may damage the first enemy in range (if cooldown allows).
+    // Towers attack enemies
     method void towersAttack() {
         var int ti;
         var int ei;
@@ -290,7 +293,7 @@ class Game {
         return;
     }
 
-    // Redraws all towers (cheap, but stable).
+    // Redraws all towers
     method void redrawTowers() {
         var int i;
         var Tower t;
@@ -304,7 +307,7 @@ class Game {
         return;
     }
 
-    // Draws all alive enemies.
+    // Draws all enemies
     method void drawEnemies() {
         var int i;
         var Enemy e;
@@ -318,14 +321,14 @@ class Game {
         return;
     }
 
-    // Returns true when all enemies of this wave were spawned and all are dead.
+    // Checks if wave is done
     method boolean isWaveCleared() {
         if (~(spawned = toSpawn)) { return false; }
         if (killedCount < toSpawn) { return false; }
         return true;
     }
 
-    // Starts the next wave (and stops the game after wave 10 with a win message).
+    // Starts the next wave
     method void startNextWave() {
         do clearEnemyMarks();
 
@@ -334,8 +337,7 @@ class Game {
 
         // WIN condition: stop after 10 waves
         if (wave = 11) {
-            do Output.moveCursor(10, 25);
-            do Output.printString("YOU WIN!");
+            do drawWinScreen();
             let running = false;
             return;
         }
@@ -345,15 +347,15 @@ class Game {
     // REMOVED CAP: if (toSpawn > 4) { let toSpawn = 4; }
 
     let spawned = 0;
-    // enemyCount is no longer used as a "max index". 
-    // We always iterate 0..3 and check isAlive.
+    // enemyCount is no longer used as a "max index" 
+    // We always iterate 0..3 and check isAlive
     
     let killedCount = 0;
     let enemyTick = 0;
 
     // speed up enemies slowly (min delay 4 -> formerly 2)
     // Old: 6 - (wave/2). New for 2x FPS + slower scaling:
-    // Base 12 (very slow) -> reduced by wave.
+    // Base 12 (very slow) -> reduced by wave
     let enemyDelay = 14 - wave; 
     if (enemyDelay < 4) { let enemyDelay = 4; }
 
@@ -365,14 +367,14 @@ class Game {
     }
 
 
-    // Clears tiny artifacts where enemies/hp bars were.
+    // Clears artifacts
     method void clearEnemyMarks() {
         do drawPath();
         do redrawTowers();
         return;
     }
 
-    // Finds the index of a tower at (x,y), or -1 if none.
+    // Finds tower index
     method int findTowerIndex(int x, int y) {
         var int i;
         var Tower t;
@@ -391,7 +393,7 @@ class Game {
         return -1;
     }
 
-    // Removes a tower by index and shifts the array left.
+    // Removes tower
     method void removeTowerAt(int idx) {
         var int i;
         var Tower t;
@@ -415,7 +417,7 @@ class Game {
         return;
     }
 
-    // Draws a filled 16x16 cell at grid coordinate.
+    // Draws a cell
     method void drawCellRect(int gx, int gy) {
         var int px;
         var int py;
@@ -426,67 +428,68 @@ class Game {
         return;
     }
 
-    // Builds the path arrays (one-cell wide) in grid coordinates.
-    method void buildPath() {
+    // Build map
+    method void buildPath(int mapId) {
         var int x;
         var int y;
 
         let pathLen = 0;
 
-        // segment 1: (0,9) -> (14,9)
-        let y = 9;
-        let x = 0;
-        while (x < 15) {
-            let pathX[pathLen] = x;
-            let pathY[pathLen] = y;
-            let pathLen = pathLen + 1;
-            let x = x + 1;
+        if (mapId = 1) {
+            // MAP 1: Classic Winding
+            // (0,9)->(14,9)
+            let y = 9; let x = 0;
+            while (x < 15) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
+            // (14,9)->(14,4)
+            let x = 14; let y = 8;
+            while (y > 3) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let y=y-1; }
+            // (14,4)->(23,4)
+            let y = 4; let x = 15;
+            while (x < 24) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
+            // (23,4)->(23,9)
+            let x = 23; let y = 5;
+            while (y < 10) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let y=y+1; }
+            // (23,9)->(31,9)
+            let y = 9; let x = 24;
+            while (x < 32) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
         }
 
-        // segment 2: (14,9) -> (14,4)
-        let x = 14;
-        let y = 8;
-        while (y > 3) {
-            let pathX[pathLen] = x;
-            let pathY[pathLen] = y;
-            let pathLen = pathLen + 1;
-            let y = y - 1;
+        if (mapId = 2) {
+            // MAP 2: ZigZag
+            // (0,3)->(29,3) Right
+            let y = 3; let x = 0;
+            while (x < 30) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
+            // (29,3)->(29,8) Down
+            let x = 29; let y = 4;
+            while (y < 9) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let y=y+1; }
+            // (29,8)->(2,8) Left
+            let y = 8; let x = 28;
+            while (x > 1) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x-1; }
+            // (2,8)->(2,13) Down
+            let x = 2; let y = 9;
+            while (y < 14) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let y=y+1; }
+            // (2,13)->(31,13) Right
+            let y = 13; let x = 3;
+            while (x < 32) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
         }
 
-        // segment 3: (14,4) -> (23,4)
-        let y = 4;
-        let x = 15;
-        while (x < 24) {
-            let pathX[pathLen] = x;
-            let pathY[pathLen] = y;
-            let pathLen = pathLen + 1;
-            let x = x + 1;
-        }
-
-        // segment 4: (23,4) -> (23,9)
-        let x = 23;
-        let y = 5;
-        while (y < 10) {
-            let pathX[pathLen] = x;
-            let pathY[pathLen] = y;
-            let pathLen = pathLen + 1;
-            let y = y + 1;
-        }
-
-        // segment 5: (23,9) -> (31,9)
-        let y = 9;
-        let x = 24;
-        while (x < 32) {
-            let pathX[pathLen] = x;
-            let pathY[pathLen] = y;
-            let pathLen = pathLen + 1;
-            let x = x + 1;
+        if (mapId = 3) {
+            // MAP 3: The U-Turn
+            // (0,3)->(28,3) Right
+            let y = 3; let x = 0;
+            while (x < 29) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x+1; }
+            // (28,3)->(28,12) Down
+            let x = 28; let y = 4;
+            while (y < 13) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let y=y+1; }
+            // (28,12)->(0,12) Left
+            let y = 12; let x = 27;
+            while (x > -1) { let pathX[pathLen]=x; let pathY[pathLen]=y; let pathLen=pathLen+1; let x=x-1; }
         }
 
         return;
     }
 
-    // Draws the whole map (white background + black path).
+    // Draws the map
     method void drawPath() {
         var int i;
 
@@ -503,7 +506,7 @@ class Game {
         return;
     }
 
-    // Checks if a given grid cell belongs to the path.
+    // Checks if cell is on path
     method boolean isPathCell(int gx, int gy) {
         var int i;
         let i = 0;
@@ -516,7 +519,7 @@ class Game {
         return false;
     }
 
-    // Displays wave info (simple HUD).
+    // Draws the HUD
     method void drawHUD() {
         do Output.moveCursor(0, 0);
         do Output.printString(sWave);
@@ -551,7 +554,66 @@ class Game {
         return;
     }
 
-    // Frees allocated objects.
+    // Show win screen
+    method void drawWinScreen() {
+        do Screen.clearScreen();
+        do Output.moveCursor(8, 27);
+        do Output.printString("YOU WIN!");
+        
+        do Output.moveCursor(10, 23);
+        do Output.printString("CONGRATULATIONS!");
+        
+        do Output.moveCursor(12, 20);
+        do Output.printString("You Defended the Path!");
+        
+        return;
+    }
+
+    // Select map
+    method int showStartScreen() {
+        var char key;
+        var int selection;
+        let selection = 0;
+
+        do Screen.clearScreen();
+        
+        do Output.moveCursor(5, 25);
+        do Output.printString("TOWER DEFENSE");
+        
+        do Output.moveCursor(8, 22);
+        do Output.printString("Goal: Survive 10 Waves");
+        
+        do Output.moveCursor(10, 20);
+        do Output.printString("Controls:");
+        do Output.moveCursor(11, 22);
+        do Output.printString("[Arrows] Move Cursor");
+        do Output.moveCursor(12, 22);
+        do Output.printString("[Space] Build/Sell (50c)");
+        
+        do Output.moveCursor(15, 20);
+        do Output.printString("Select Map to Start:");
+        do Output.moveCursor(17, 22);
+        do Output.printString("[1] Classic");
+        do Output.moveCursor(18, 22);
+        do Output.printString("[2] The ZigZag");
+        do Output.moveCursor(19, 22);
+        do Output.printString("[3] The U-Turn");
+        
+        // Wait for 1, 2, or 3
+        while (selection = 0) {
+            let key = Keyboard.keyPressed();
+            if (key = 49) { let selection = 1; } // 1
+            if (key = 50) { let selection = 2; } // 2
+            if (key = 51) { let selection = 3; } // 3
+        }
+        
+        // Clear and redraw game
+        do Screen.clearScreen();
+        // Path will be drawn by caller
+        return selection;
+    }
+
+    // Disposes the game
     method void dispose() {
         var int i;
         var Tower t;

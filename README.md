@@ -1,25 +1,37 @@
-# Tower Defense (Jack) — Nand2Tetris Project 9
+# Tower Defense
 
-## Concept
-A mini single-lane tower defense game written in Jack.
+A Tower Defense game for the Jack platform (Nand2Tetris).
 
-## How to run (Nand2Tetris tools)
-1. Open JackCompiler and compile the `src/` folder (it compiles folders).
-2. Open VMEmulator and load the generated VM output folder.
-3. Run with "No animation" + fast-forward for best speed.
+## Features
+- **3 Maps**: Classic, ZigZag, and U-Turn.
+- **Visuals**: Skeleton enemies and Arrow towers (Bitmap Sprites).
+- **Gameplay**:
+  - Build towers (Cost: 50c) to defend the path.
+  - Earn money by defeating enemies.
+  - Survive 10 Waves to win.
+  - Lives system (20 Lives).
+- **Interface**:
+  - Start Screen with instructions.
+  - HUD with Wave, Enemies, Gold, and Lives.
+  - Win/Game Over screens.
 
-## Controls (planned)
-- Arrow keys: move cursor
-- 1: select tower
-- Space: place tower
-- Q: quit
+## Controls
+- **Arrows**: Move cursor
+- **Space**: Build Tower / Sell Tower (+30c refund)
+- **S**: Start Next Wave
+- **1, 2, 3**: Select Map (at start)
+- **Q**: Quit
 
-## Repo structure
-- `src/` all .jack files
-- `docs/` PDF (architecture + video link)
-- `assets/` images / sprites / notes
+## How to Run
+1. Open the **VM Emulator**.
+2. Load the compiled `.vm` files (or the directory).
+3. Set Animate to **No Animation** (Fast) or **Line**.
+4. Run the simulation.
+5. Follow the on-screen instructions.
 
-## Submission
-Submit `project9.zip` containing:
-- `docs/<your PDF>.pdf` (with Google Drive video link)
-- `src/` (your Jack code)
+## Project Structure
+- `Game.jack`: Main game loop and logic.
+- `Tower.jack`: Tower logic and drawing.
+- `Enemy.jack`: Enemy movement and sprites.
+- `Cursor.jack`: Player cursor handling.
+- `Main.jack`: Entry point.
