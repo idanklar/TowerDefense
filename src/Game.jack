@@ -22,7 +22,8 @@ class Game {
     field int wave;
     field int toSpawn;
     field int spawned;
-    field int spawnTick;
+    field int spawnTick; 
+    field int killedCount; // Tracks how many killed/escaped in this wave so far
     field int spawnDelay;
 
     // String constants to prevent memory leaks in main loop
@@ -70,7 +71,7 @@ class Game {
         let toSpawn = 0;
         let spawned = 0;
         let spawnTick = 0;
-        let spawnDelay = 10;
+        let spawnDelay = 20; // 2x (was 10)
 
         let sWave = "Wave: ";
         let sEnemies = "Enemies: ";
@@ -134,6 +135,7 @@ class Game {
 
             // Always draw HUD to show updated money/lives
             do drawHUD();
+            do redrawTowers();
 
             // WAITING STATE: waiting for 's' to start wave
             if (~inWave) {
@@ -165,7 +167,6 @@ class Game {
                 // combat + draw
                 do towersAttack();
                 do drawEnemies();
-                do redrawTowers();
 
                 // Check Game Over
                 if (lives < 1) {
@@ -179,7 +180,7 @@ class Game {
                 }
             }
 
-            do Sys.wait(50);
+            do Sys.wait(25); // 2x Frame Rate (was 50)
         }
 
         return;
@@ -188,23 +189,33 @@ class Game {
     // Spawns enemies over time until reaching the wave target.
     method void handleSpawning() {
         var int hp;
+        var int i;
         var Enemy e;
- 
+
         if (spawned = toSpawn) { return; }
-        if (enemyCount = 4) { return; }
+        
+        // Count active enemies to ensure we don't exceed 4
+        // (Checking pool availability)
 
         let spawnTick = spawnTick + 1;
         if (spawnTick < spawnDelay) { return; }
         let spawnTick = 0;
 
-        // base hp reduced for balance (was 5 + wave)
-        let hp = 2 + wave;
-
-        let e = enemies[enemyCount];
-        do e.reset(pathX[0], pathY[0], hp);
-
-        let enemyCount = enemyCount + 1;
-        let spawned = spawned + 1;
+        // Find a dead slot
+        let i = 0;
+        while (i < 4) {
+            let e = enemies[i];
+            if (~e.isAlive()) {
+                // Found slot! Spawn here.
+                let hp = 2 + wave;
+                do e.reset(pathX[0], pathY[0], hp);
+                let spawned = spawned + 1;
+                
+                // Force exit loop
+                let i = 4; 
+            }
+            let i = i + 1;
+        }
 
         return;
     }
@@ -215,7 +226,7 @@ class Game {
         var Enemy e;
 
         let i = 0;
-        while (i < enemyCount) {
+        while (i < 4) { // Always check all 4 slots
             let e = enemies[i];
 
             if (e.isAlive()) {
@@ -227,6 +238,7 @@ class Game {
                     if (e.hasEscaped()) {
                         let lives = lives - 1;
                     }
+                    let killedCount = killedCount + 1; // It's gone from the board
                     do e.erase(isPathCell(e.getX(), e.getY()));
                 }
             }
@@ -250,7 +262,7 @@ class Game {
 
             if (t.canShoot()) {
                 let ei = 0;
-                while (ei < enemyCount) {
+                while (ei < 4) {
                     let e = enemies[ei];
 
                     if (e.isAlive()) {
@@ -261,9 +273,10 @@ class Game {
                             if (~e.isAlive()) {
                                 do e.erase(isPathCell(e.getX(), e.getY()));
                                 let money = money + 10;
+                                let killedCount = killedCount + 1;
                             }
 
-                            let ei = enemyCount; // break inner loop
+                            let ei = 4; // break inner loop
                         }
                     }
 
@@ -297,7 +310,7 @@ class Game {
         var Enemy e;
 
         let i = 0;
-        while (i < enemyCount) {
+        while (i < 4) {
             let e = enemies[i];
             if (e.isAlive()) { do e.draw(); }
             let i = i + 1;
@@ -307,17 +320,8 @@ class Game {
 
     // Returns true when all enemies of this wave were spawned and all are dead.
     method boolean isWaveCleared() {
-        var int i;
-        var Enemy e;
-
         if (~(spawned = toSpawn)) { return false; }
-
-        let i = 0;
-        while (i < enemyCount) {
-            let e = enemies[i];
-            if (e.isAlive()) { return false; }
-            let i = i + 1;
-        }
+        if (killedCount < toSpawn) { return false; }
         return true;
     }
 
@@ -337,20 +341,25 @@ class Game {
         }
 
         // up to 4 enemies per wave
-    let toSpawn = wave;
-    if (toSpawn > 4) { let toSpawn = 4; }
+    let toSpawn = 2 + wave; 
+    // REMOVED CAP: if (toSpawn > 4) { let toSpawn = 4; }
 
     let spawned = 0;
-    let enemyCount = 0;
+    // enemyCount is no longer used as a "max index". 
+    // We always iterate 0..3 and check isAlive.
+    
+    let killedCount = 0;
     let enemyTick = 0;
 
-    // speed up enemies slowly (min delay 2)
-    let enemyDelay = 6 - (wave / 2);
-    if (enemyDelay < 2) { let enemyDelay = 2; }
+    // speed up enemies slowly (min delay 4 -> formerly 2)
+    // Old: 6 - (wave/2). New for 2x FPS + slower scaling:
+    // Base 12 (very slow) -> reduced by wave.
+    let enemyDelay = 14 - wave; 
+    if (enemyDelay < 4) { let enemyDelay = 4; }
 
-    // spawn faster (min delay 4)
-    let spawnDelay = 12 - wave;
-    if (spawnDelay < 4) { let spawnDelay = 4; }
+    // spawn faster (min delay 8 -> formerly 4)
+    let spawnDelay = 24 - wave;
+    if (spawnDelay < 8) { let spawnDelay = 8; }
 
     return;
     }
@@ -393,6 +402,8 @@ class Game {
         do drawCellRect(t.getX(), t.getY());
 
         do t.dispose();
+
+        let money = money + 30; // Refund
 
         let i = idx;
         while (i < (towerCount - 1)) {
@@ -514,7 +525,7 @@ class Game {
 
         do Output.moveCursor(1, 0);
         do Output.printString(sEnemies);
-        do Output.printInt(toSpawn);
+        do Output.printInt(toSpawn - killedCount); // Show actual remaining
         do Output.printString(sSpace);
 
         do Output.moveCursor(0, 15);

@@ -11,16 +11,36 @@ class Tower {
         return this;
     }
 
-    // Draws a simple "tower" sprite inside its cell.
+    // Draws the Arrow Tower Sprite.
     method void draw() {
-        var int px, py;
-        let px = x * 16;
-        let py = y * 16;
+        var int memAddress;
+        
+        // Towers are on WHITE background (color false).
+        // Memory.poke(addr, 0) = All white (invisible on white).
+        // Memory.poke(addr, -1) = All black (1111111111111111).
+        
+        let memAddress = 16384 + (y * 512) + x;
 
-        do Screen.setColor(true);
-        do Screen.drawRectangle(px + 5, py + 4, px + 10, py + 12); // body
-        do Screen.drawRectangle(px + 3, py + 12, px + 12, py + 13); // base
-        do Screen.drawRectangle(px + 6, py + 2, px + 9, py + 4);    // head
+        // Arrow Tower Bitmap
+        // Designed: White background (0), Black lines (1).
+        
+        do Memory.poke(memAddress+0, 0);           // 0000000000000000
+        do Memory.poke(memAddress+32, 960);        // 0000001111000000 (Top)
+        do Memory.poke(memAddress+64, 1632);       // 0000011001100000 
+        do Memory.poke(memAddress+96, 1632);       // 0000011001100000
+        do Memory.poke(memAddress+128, 960);       // 0000001111000000
+        do Memory.poke(memAddress+160, 4080);      // 0000111111110000 (Platform)
+        do Memory.poke(memAddress+192, 4080);      // 0000111111110000
+        do Memory.poke(memAddress+224, 2016);      // 0000011111100000 (Base)
+        do Memory.poke(memAddress+256, 2016);      
+        do Memory.poke(memAddress+288, 2016);
+        do Memory.poke(memAddress+320, 2016);
+        do Memory.poke(memAddress+352, 2016);
+        do Memory.poke(memAddress+384, 4080);      // 0000111111110000 (Bottom)
+        do Memory.poke(memAddress+416, 4080);
+        do Memory.poke(memAddress+448, 8184);      // 0001111111111000 (Foundation)
+        do Memory.poke(memAddress+480, 0);         
+        
         return;
     }
 
@@ -40,7 +60,7 @@ class Tower {
     // Returns true only when the tower may shoot; otherwise decreases cooldown.
     method boolean canShoot() {
         if (cooldown = 0) {
-            let cooldown = 8;
+            let cooldown = 16; // 2x (was 8)
             return true;
         }
         let cooldown = cooldown - 1;
