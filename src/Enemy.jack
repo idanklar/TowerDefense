@@ -50,47 +50,56 @@ class Enemy {
         return;
     }
 
-    // Draws the enemy as a filled cell + a small hp bar above it.
+    // Draws the enemy (visible on the black path) + hp bar INSIDE the cell.
     method void draw() {
-        var int px, py, barW;
-        if (~alive) { return; }
+    var int px, py, barW;
 
-        let px = x * 16;
-        let py = y * 16;
+    if (~alive) { return; }
 
-        // body
+    let px = x * 16;
+    let py = y * 16;
+
+    // Enemy body: WHITE fill (visible on black path)
+    do Screen.setColor(false);
+    do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 12);
+
+    // Black outline
+    do Screen.setColor(true);
+    do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 3);
+    do Screen.drawRectangle(px + 3, py + 12, px + 12, py + 12);
+    do Screen.drawRectangle(px + 3, py + 3, px + 3, py + 12);
+    do Screen.drawRectangle(px + 12, py + 3, px + 12, py + 12);
+
+    // HP bar INSIDE the cell (bottom 2 rows)
+    // Background: white strip
+    do Screen.setColor(false);
+    do Screen.drawRectangle(px + 2, py + 13, px + 13, py + 14);
+
+    // Fill: black amount based on hp (0..12 pixels)
+    let barW = (hp * 12) / maxHp;
+    if (barW > 0) {
         do Screen.setColor(true);
-        do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 12);
-        do Screen.drawRectangle(px + 5, py + 1, px + 10, py + 2); // little "horns"
-
-        // hp bar background (white)
-        do Screen.setColor(false);
-        do Screen.drawRectangle(px, py - 4, px + 15, py - 2);
-
-        // hp bar fill (black), width in [0..16]
-        let barW = (hp * 16) / maxHp;
-        if (barW < 1) { return; }
-        do Screen.setColor(true);
-        do Screen.drawRectangle(px, py - 4, px + barW - 1, py - 2);
-
-        return;
+        do Screen.drawRectangle(px + 2, py + 13, (px + 2) + barW - 1, py + 14);
     }
 
-    // Erases the enemy from its previous cell, restoring path/grass background.
+    return;
+    }
+
+
+    
+    // Erases the enemy by restoring the background of the previous cell.
     method void erase(boolean prevOnPath) {
-        var int px, py;
-        let px = prevX * 16;
-        let py = prevY * 16;
+    var int px, py;
 
-        do Screen.setColor(prevOnPath);
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
+    let px = prevX * 16;
+    let py = prevY * 16;
 
-        // also clear old hp bar area
-        do Screen.setColor(false);
-        do Screen.drawRectangle(px, py - 4, px + 15, py - 2);
+    do Screen.setColor(prevOnPath);
+    do Screen.drawRectangle(px, py, px + 15, py + 15);
 
-        return;
+    return;
     }
+
 
     // Applies damage; if hp drops below 1 -> dead.
     method void takeDamage(int d) {

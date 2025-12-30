@@ -259,29 +259,38 @@ class Game {
         return true;
     }
 
-    // Starts the next wave: increases wave counter + enemy count target + speed.
+    // Starts the next wave (and stops the game after wave 10 with a win message).
     method void startNextWave() {
-        do clearEnemyMarks();
+    do clearEnemyMarks();
 
-        let wave = wave + 1;
+    let wave = wave + 1;
 
-        // up to 4 enemies per wave
-        let toSpawn = wave;
-        if (toSpawn > 4) { let toSpawn = 4; }
-
-        let spawned = 0;
-        let enemyCount = 0;
-
-        // make enemies slightly faster over time (min delay = 2)
-        let enemyDelay = 6 - (wave / 2);
-        if (enemyDelay < 2) { let enemyDelay = 2; }
-
-        // spawn enemies faster on higher waves (min delay = 4)
-        let spawnDelay = 12 - wave;
-        if (spawnDelay < 4) { let spawnDelay = 4; }
-
+    // WIN condition: stop after 10 waves
+    if (wave = 10) {
+        do Output.moveCursor(3, 0);
+        do Output.printString("YOU WIN!");
+        let running = false;
         return;
     }
+
+    // up to 4 enemies per wave
+    let toSpawn = wave;
+    if (toSpawn > 4) { let toSpawn = 4; }
+
+    let spawned = 0;
+    let enemyCount = 0;
+
+    // speed up enemies slowly (min delay 2)
+    let enemyDelay = 6 - (wave / 2);
+    if (enemyDelay < 2) { let enemyDelay = 2; }
+
+    // spawn faster (min delay 4)
+    let spawnDelay = 12 - wave;
+    if (spawnDelay < 4) { let spawnDelay = 4; }
+
+    return;
+    }
+
 
     // Clears tiny artifacts where enemies/hp bars were.
     method void clearEnemyMarks() {
