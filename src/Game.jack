@@ -1,6 +1,7 @@
 // Game: main controller (map, waves, tower placement, enemy spawning, main loop).
 class Game {
     field boolean running;
+    field boolean inWave;
     field Cursor cursor;
 
     field Array towers;
@@ -28,10 +29,19 @@ class Game {
     field String sWave;
     field String sEnemies;
     field String sSpace;
+    field String sMoney;
+    field String sLives;
+    field String sPressStart;
 
+    field int money;
+    field int lives;
+
+    field boolean inWave;
+    
     // Builds the game state and allocates arrays.
     constructor Game new() {
         let running = true;
+        let inWave = false;
 
         let towers = Array.new(8);
         let towerCount = 0;
@@ -65,12 +75,20 @@ class Game {
         let sWave = "Wave: ";
         let sEnemies = "Enemies: ";
         let sSpace = "   ";
+        let sMoney = "Gold: ";
+        let sLives = "Lives: ";
+        let sPressStart = "Press 's' to start Wave ";
+
+        let money = 100;
+        let lives = 20;
 
         do Screen.clearScreen();
         do buildPath();
         do drawPath();
-        do startNextWave();
-
+        
+        // Initial setup for Wave 1 (but wait for user to start)
+        do startNextWave(); 
+        
         return this;
     }
 
@@ -82,6 +100,8 @@ class Game {
         while (running) {
             let key = Keyboard.keyPressed();
             if (key = 113) { let running = false; } // q
+
+            // --- ALWAYS ON LOGIC (Cursor, Building, HUD) ---
 
             // cursor
             do cursor.erase(isPathCell(cursor.getPrevX(), cursor.getPrevY()));
@@ -98,9 +118,12 @@ class Game {
                         do removeTowerAt(idx);
                     } else {
                         if (towerCount < 8) {
-                            if (~isPathCell(cursor.getX(), cursor.getY())) {
-                                let towers[towerCount] = Tower.new(cursor.getX(), cursor.getY());
-                                let towerCount = towerCount + 1;
+                            if (money > 49) {
+                                if (~isPathCell(cursor.getX(), cursor.getY())) {
+                                    let towers[towerCount] = Tower.new(cursor.getX(), cursor.getY());
+                                    let towerCount = towerCount + 1;
+                                    let money = money - 50;
+                                }
                             }
                         }
                     }
@@ -109,25 +132,51 @@ class Game {
                 let spaceHeld = 0;
             }
 
-            // spawn logic
-            do handleSpawning();
-
-            // enemy movement timing
-            let enemyTick = enemyTick + 1;
-            if (enemyTick = enemyDelay) {
-                let enemyTick = 0;
-                do stepEnemies();
-            }
-
-            // combat + draw
-            do towersAttack();
-            do drawEnemies();
-            do redrawTowers();
+            // Always draw HUD to show updated money/lives
             do drawHUD();
 
-            // wave progression
-            if (isWaveCleared()) {
-                do startNextWave();
+            // WAITING STATE: waiting for 's' to start wave
+            if (~inWave) {
+                do Output.moveCursor(2, 20); // Top center
+                do Output.printString(sPressStart);
+                do Output.printInt(wave);
+                
+                // Allow 'S' (83) or 's' (115)
+                if ((key = 83) | (key = 115)) { 
+                    let inWave = true;
+                    // clear message cleanly
+                    do Output.moveCursor(2, 20);
+                    do Output.printString("                         "); 
+                    do Output.printString("      "); // extra space just in case
+                }
+            } else {
+                // PLAYING STATE: Combat logic
+
+                // spawn logic
+                do handleSpawning();
+
+                // enemy movement timing
+                let enemyTick = enemyTick + 1;
+                if (~(enemyTick < enemyDelay)) {
+                    let enemyTick = 0;
+                    do stepEnemies();
+                }
+
+                // combat + draw
+                do towersAttack();
+                do drawEnemies();
+                do redrawTowers();
+
+                // Check Game Over
+                if (lives < 1) {
+                   do drawGameOver();
+                   let running = false;
+                }
+
+                // wave progression
+                if (isWaveCleared()) {
+                    do startNextWave();
+                }
             }
 
             do Sys.wait(50);
@@ -140,7 +189,7 @@ class Game {
     method void handleSpawning() {
         var int hp;
         var Enemy e;
-
+ 
         if (spawned = toSpawn) { return; }
         if (enemyCount = 4) { return; }
 
@@ -148,8 +197,8 @@ class Game {
         if (spawnTick < spawnDelay) { return; }
         let spawnTick = 0;
 
-        // base hp is 5, increases with wave
-        let hp = 5 + wave;
+        // base hp reduced for balance (was 5 + wave)
+        let hp = 2 + wave;
 
         let e = enemies[enemyCount];
         do e.reset(pathX[0], pathY[0], hp);
@@ -175,6 +224,9 @@ class Game {
 
                 // If it died by reaching the end, erase its current cell once
                 if (~e.isAlive()) {
+                    if (e.hasEscaped()) {
+                        let lives = lives - 1;
+                    }
                     do e.erase(isPathCell(e.getX(), e.getY()));
                 }
             }
@@ -208,6 +260,7 @@ class Game {
                             // if it died now, erase it immediately
                             if (~e.isAlive()) {
                                 do e.erase(isPathCell(e.getX(), e.getY()));
+                                let money = money + 10;
                             }
 
                             let ei = enemyCount; // break inner loop
@@ -270,24 +323,26 @@ class Game {
 
     // Starts the next wave (and stops the game after wave 10 with a win message).
     method void startNextWave() {
-    do clearEnemyMarks();
+        do clearEnemyMarks();
 
-    let wave = wave + 1;
+        let wave = wave + 1;
+        let inWave = false; // Pause and wait for user
 
-    // WIN condition: stop after 10 waves
-    if (wave = 10) {
-        do Output.moveCursor(3, 0);
-        do Output.printString("YOU WIN!");
-        let running = false;
-        return;
-    }
+        // WIN condition: stop after 10 waves
+        if (wave = 11) {
+            do Output.moveCursor(10, 25);
+            do Output.printString("YOU WIN!");
+            let running = false;
+            return;
+        }
 
-    // up to 4 enemies per wave
+        // up to 4 enemies per wave
     let toSpawn = wave;
     if (toSpawn > 4) { let toSpawn = 4; }
 
     let spawned = 0;
     let enemyCount = 0;
+    let enemyTick = 0;
 
     // speed up enemies slowly (min delay 2)
     let enemyDelay = 6 - (wave / 2);
@@ -462,6 +517,26 @@ class Game {
         do Output.printInt(toSpawn);
         do Output.printString(sSpace);
 
+        do Output.moveCursor(0, 15);
+        do Output.printString(sMoney);
+        do Output.printInt(money);
+        do Output.printString(sSpace);
+
+        do Output.moveCursor(1, 15);
+        do Output.printString(sLives);
+        do Output.printInt(lives);
+        do Output.printString(sSpace);
+
+        return;
+    }
+
+    method void drawGameOver() {
+        do Screen.clearScreen();
+        do Output.moveCursor(10, 27);
+        do Output.printString("GAME OVER");
+        do Output.moveCursor(12, 25);
+        do Output.printString("Reached Wave: ");
+        do Output.printInt(wave);
         return;
     }
 
@@ -490,6 +565,9 @@ class Game {
         do sWave.dispose();
         do sEnemies.dispose();
         do sSpace.dispose();
+        do sMoney.dispose();
+        do sLives.dispose();
+        do sPressStart.dispose();
 
         do Memory.deAlloc(this);
         return;

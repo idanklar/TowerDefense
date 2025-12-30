@@ -4,6 +4,7 @@ class Enemy {
     field int prevX, prevY;
     field int hp, maxHp;
     field boolean alive;
+    field boolean escaped;
     field int pathIndex;
 
     // Creates an enemy (inactive until reset()).
@@ -28,6 +29,7 @@ class Enemy {
         let hp = startHp;
         let maxHp = startHp;
         let alive = true;
+        let escaped = false;
         let pathIndex = 0;
         return;
     }
@@ -46,6 +48,7 @@ class Enemy {
         } else {
             // Reached end: count as "escaped" -> kill it
             let alive = false;
+            let escaped = true;
         }
         return;
     }
@@ -113,6 +116,7 @@ class Enemy {
     }
 
     method boolean isAlive() { return alive; }
+    method boolean hasEscaped() { return escaped; }
     method int getX() { return x; }
     method int getY() { return y; }
     method int getPrevX() { return prevX; }
