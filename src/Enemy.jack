@@ -1,128 +1,94 @@
-// Represents a single enemy.
-// Moves along a fixed path, has health points,
-// can take damage, and draws itself with an HP bar.
+// Represents a single enemy moving along the path
 class Enemy {
+
     field int x, y;
     field int prevX, prevY;
-
-    field int waypoint;
-    field boolean alive;
-
     field int hp, maxHp;
+    field boolean alive;
+    field int pathIndex;
 
-    constructor Enemy new(int startX, int startY, int startHp) {
-        let x = startX;
-        let y = startY;
-        let prevX = x;
-        let prevY = y;
+    constructor Enemy new(int sx, int sy, int health) {
+        let x = sx;
+        let y = sy;
+        let prevX = sx;
+        let prevY = sy;
 
-        let waypoint = 0;
+        let hp = health;
+        let maxHp = health;
         let alive = true;
-
-        let maxHp = startHp;
-        let hp = startHp;
+        let pathIndex = 0;
 
         return this;
     }
 
-    method boolean isAlive() { return alive; }
-
-    method int getX() { return x; }
-    method int getY() { return y; }
-    method int getPrevX() { return prevX; }
-    method int getPrevY() { return prevY; }
-
-    method void takeDamage(int dmg) {
-        let hp = hp - dmg;
-        if (hp < 0) { let hp = 0; }
-        if (hp = 0) { let alive = false; }
-        return;
-    }
-
-    method void erase(boolean wasOnPath) {
-        var int px, py;
-
-        if (wasOnPath) { do Screen.setColor(true); }
-        else { do Screen.setColor(false); }
-
-        let px = prevX * 16;
-        let py = prevY * 16;
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
-        return;
-    }
-
-    method void eraseCurrent(boolean wasOnPath) {
-    var int px, py;
-
-    if (wasOnPath) { do Screen.setColor(true); }
-    else { do Screen.setColor(false); }
-
-    let px = x * 16;
-    let py = y * 16;
-
-    do Screen.drawRectangle(px, py, px + 15, py + 15);
-    return;
-    }
-
-
-    method void update(Array pathX, Array pathY, int pathLen) {
-        var int tx, ty;
-
-        if (~alive) { return; }
-
+    // Moves enemy along the path
+    method void update(Array px, Array py, int len) {
         let prevX = x;
         let prevY = y;
 
-        // waypoint >= pathLen
-        if (~(waypoint < pathLen)) {
-            let alive = false;
-            return;
+        if (pathIndex < len - 1) {
+            let pathIndex = pathIndex + 1;
+            let x = px[pathIndex];
+            let y = py[pathIndex];
         }
-
-        let tx = pathX[waypoint];
-        let ty = pathY[waypoint];
-
-        if (x < tx) { let x = x + 1; }
-        if (x > tx) { let x = x - 1; }
-        if (y < ty) { let y = y + 1; }
-        if (y > ty) { let y = y - 1; }
-
-        if ((x = tx) & (y = ty)) {
-            let waypoint = waypoint + 1;
-        }
-
         return;
     }
 
+    // Draw enemy + HP bar
     method void draw() {
-        var int px, py;
-        var int barW;
+        var int px, py, barW;
 
         let px = x * 16;
         let py = y * 16;
 
-        // body
-        do Screen.setColor(false);
+        do Screen.setColor(true);
         do Screen.drawRectangle(px, py, px + 15, py + 15);
 
-        // outline
-        do Screen.setColor(true);
-        do Screen.drawRectangle(px, py, px + 15, py);
-        do Screen.drawRectangle(px, py + 15, px + 15, py + 15);
-        do Screen.drawRectangle(px, py, px, py + 15);
-        do Screen.drawRectangle(px + 15, py, px + 15, py + 15);
-
-        // hp bar inside bottom (width 0..14)
-        let barW = (hp * 14) / maxHp;
+        let barW = (hp * 16) / maxHp;
 
         do Screen.setColor(false);
-        do Screen.drawRectangle(px + 1, py + 12, px + 14, py + 14);
+        do Screen.drawRectangle(px, py - 4, px + 15, py - 2);
 
         if (barW > 0) {
             do Screen.setColor(true);
-            do Screen.drawRectangle(px + 1, py + 12, px + barW, py + 14);
+            do Screen.drawRectangle(px, py - 4, px + barW - 1, py - 2);
         }
 
         return;
     }
+
+    // Erase previous position
+    method void erase(boolean onPath) {
+        do Screen.setColor(onPath);
+        do Screen.drawRectangle(
+            prevX * 16, prevY * 16,
+            prevX * 16 + 15, prevY * 16 + 15
+        );
+        return;
+    }
+
+    // Erase current position
+    method void eraseCurrent(boolean onPath) {
+        do Screen.setColor(onPath);
+        do Screen.drawRectangle(
+            x * 16, y * 16,
+            x * 16 + 15, y * 16 + 15
+        );
+        return;
+    }
+
+    // Damage enemy
+    method void takeDamage(int d) {
+        let hp = hp - d;
+        if (hp <= 0) {
+            let alive = false;
+        }
+        return;
+    }
+
+    method boolean isAlive() { return alive; }
+    method int getX() { return x; }
+    method int getY() { return y; }
+    method int getPrevX() { return prevX; }
+    method int getPrevY() { return prevY; }
 }

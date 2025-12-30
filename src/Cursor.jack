@@ -1,60 +1,52 @@
-// Represents the player cursor.
-// Handles movement, drawing, and restoring the background
-// when the cursor moves across the screen.
+// Player-controlled cursor for placing towers
 class Cursor {
+
     field int x, y;
     field int prevX, prevY;
 
-    constructor Cursor new(int startX, int startY) {
-        let x = startX;
-        let y = startY;
+    constructor Cursor new(int sx, int sy) {
+        let x = sx;
+        let y = sy;
+        let prevX = sx;
+        let prevY = sy;
+        return this;
+    }
+
+    // Moves cursor using arrow keys
+    method void move(int key) {
         let prevX = x;
         let prevY = y;
-        return this;
+
+        if (key = 130) { let y = y - 1; } // up
+        if (key = 131) { let y = y + 1; } // down
+        if (key = 132) { let x = x - 1; } // left
+        if (key = 133) { let x = x + 1; } // right
+
+        return;
+    }
+
+    // Draw cursor
+    method void draw() {
+        do Screen.setColor(true);
+        do Screen.drawRectangle(
+            x * 16 + 4, y * 16 + 4,
+            x * 16 + 11, y * 16 + 11
+        );
+        return;
+    }
+
+    // Erase cursor
+    method void erase(boolean onPath) {
+        do Screen.setColor(onPath);
+        do Screen.drawRectangle(
+            prevX * 16, prevY * 16,
+            prevX * 16 + 15, prevY * 16 + 15
+        );
+        return;
     }
 
     method int getX() { return x; }
     method int getY() { return y; }
     method int getPrevX() { return prevX; }
     method int getPrevY() { return prevY; }
-
-    method void erase(boolean wasOnPath) {
-        var int px, py;
-
-        if (wasOnPath) { do Screen.setColor(true); }
-        else { do Screen.setColor(false); }
-
-        let px = prevX * 16;
-        let py = prevY * 16;
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
-        return;
-    }
-
-    method void move(int key) {
-        let prevX = x;
-        let prevY = y;
-
-        if (key = 130) { let x = x - 1; }
-        if (key = 132) { let x = x + 1; }
-        if (key = 131) { let y = y - 1; }
-        if (key = 133) { let y = y + 1; }
-
-        if (x < 0) { let x = 0; }
-        if (x > 31) { let x = 31; }
-        if (y < 0) { let y = 0; }
-        if (y > 15) { let y = 15; }
-
-        return;
-    }
-
-    method void draw() {
-        var int px, py;
-
-        do Screen.setColor(true);
-        let px = x * 16;
-        let py = y * 16;
-
-        do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 12);
-        return;
-    }
 }
