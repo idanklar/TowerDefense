@@ -1,12 +1,11 @@
-// Entry point of the game
+// Main entry point: creates the game and starts the main loop.
 class Main {
-
+    // Program entry point.
     function void main() {
-        var Game game;
-
-        let game = Game.new();
-        do game.run();
-
+        var Game g;
+        let g = Game.new();
+        do g.run();
+        do g.dispose();
         return;
     }
 }

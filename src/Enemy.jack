@@ -1,86 +1,103 @@
-// Represents a single enemy moving along the path
+// Enemy: moves along a predefined path and can take damage until it dies.
 class Enemy {
-
     field int x, y;
     field int prevX, prevY;
     field int hp, maxHp;
     field boolean alive;
     field int pathIndex;
 
-    constructor Enemy new(int sx, int sy, int health) {
-        let x = sx;
-        let y = sy;
-        let prevX = sx;
-        let prevY = sy;
-
-        let hp = health;
-        let maxHp = health;
-        let alive = true;
+    // Creates an enemy (inactive until reset()).
+    constructor Enemy new() {
+        let x = 0;
+        let y = 0;
+        let prevX = 0;
+        let prevY = 0;
+        let hp = 0;
+        let maxHp = 0;
+        let alive = false;
         let pathIndex = 0;
-
         return this;
     }
 
-    // Moves enemy along the path
-    method void update(Array px, Array py, int len) {
+    // Spawns / respawns the enemy at the start of the path with given HP.
+    method void reset(int startX, int startY, int startHp) {
+        let x = startX;
+        let y = startY;
+        let prevX = startX;
+        let prevY = startY;
+        let hp = startHp;
+        let maxHp = startHp;
+        let alive = true;
+        let pathIndex = 0;
+        return;
+    }
+
+    // Advances the enemy by one step along the path arrays.
+    method void step(Array pathX, Array pathY, int pathLen) {
+        if (~alive) { return; }
+
         let prevX = x;
         let prevY = y;
 
-        if (pathIndex < len - 1) {
-            let pathIndex = pathIndex + 1;
-            let x = px[pathIndex];
-            let y = py[pathIndex];
+        let pathIndex = pathIndex + 1;
+        if (pathIndex < pathLen) {
+            let x = pathX[pathIndex];
+            let y = pathY[pathIndex];
+        } else {
+            // Reached end: count as "escaped" -> kill it
+            let alive = false;
         }
         return;
     }
 
-    // Draw enemy + HP bar
+    // Draws the enemy as a filled cell + a small hp bar above it.
     method void draw() {
         var int px, py, barW;
+        if (~alive) { return; }
 
         let px = x * 16;
         let py = y * 16;
 
+        // body
         do Screen.setColor(true);
-        do Screen.drawRectangle(px, py, px + 15, py + 15);
+        do Screen.drawRectangle(px + 3, py + 3, px + 12, py + 12);
+        do Screen.drawRectangle(px + 5, py + 1, px + 10, py + 2); // little "horns"
 
-        let barW = (hp * 16) / maxHp;
-
+        // hp bar background (white)
         do Screen.setColor(false);
         do Screen.drawRectangle(px, py - 4, px + 15, py - 2);
 
-        if (barW > 0) {
-            do Screen.setColor(true);
-            do Screen.drawRectangle(px, py - 4, px + barW - 1, py - 2);
-        }
+        // hp bar fill (black), width in [0..16]
+        let barW = (hp * 16) / maxHp;
+        if (barW < 1) { return; }
+        do Screen.setColor(true);
+        do Screen.drawRectangle(px, py - 4, px + barW - 1, py - 2);
 
         return;
     }
 
-    // Erase previous position
-    method void erase(boolean onPath) {
-        do Screen.setColor(onPath);
-        do Screen.drawRectangle(
-            prevX * 16, prevY * 16,
-            prevX * 16 + 15, prevY * 16 + 15
-        );
+    // Erases the enemy from its previous cell, restoring path/grass background.
+    method void erase(boolean prevOnPath) {
+        var int px, py;
+        let px = prevX * 16;
+        let py = prevY * 16;
+
+        do Screen.setColor(prevOnPath);
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
+
+        // also clear old hp bar area
+        do Screen.setColor(false);
+        do Screen.drawRectangle(px, py - 4, px + 15, py - 2);
+
         return;
     }
 
-    // Erase current position
-    method void eraseCurrent(boolean onPath) {
-        do Screen.setColor(onPath);
-        do Screen.drawRectangle(
-            x * 16, y * 16,
-            x * 16 + 15, y * 16 + 15
-        );
-        return;
-    }
-
-    // Damage enemy
+    // Applies damage; if hp drops below 1 -> dead.
     method void takeDamage(int d) {
+        if (~alive) { return; }
         let hp = hp - d;
-        if (hp <= 0) {
+
+        if (hp < 1) {
             let alive = false;
         }
         return;
@@ -91,4 +108,9 @@ class Enemy {
     method int getY() { return y; }
     method int getPrevX() { return prevX; }
     method int getPrevY() { return prevY; }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
 }

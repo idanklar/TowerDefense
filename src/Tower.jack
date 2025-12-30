@@ -1,37 +1,43 @@
-// Stationary tower that damages enemies in range
+// Tower: a placed defense object that damages enemies in range with a cooldown.
 class Tower {
-
     field int x, y;
     field int cooldown;
 
-    constructor Tower new(int tx, int ty) {
-        let x = tx;
-        let y = ty;
+    // Creates a tower at a grid cell.
+    constructor Tower new(int ax, int ay) {
+        let x = ax;
+        let y = ay;
         let cooldown = 0;
         return this;
     }
 
-    // Draw tower symbol
+    // Draws a simple "tower" sprite inside its cell.
     method void draw() {
         var int px, py;
         let px = x * 16;
         let py = y * 16;
 
         do Screen.setColor(true);
-        do Screen.drawRectangle(px + 5, py + 3, px + 10, py + 12);
-        do Screen.drawRectangle(px + 3, py + 6, px + 12, py + 9);
+        do Screen.drawRectangle(px + 5, py + 4, px + 10, py + 12); // body
+        do Screen.drawRectangle(px + 3, py + 12, px + 12, py + 13); // base
+        do Screen.drawRectangle(px + 6, py + 2, px + 9, py + 4);    // head
         return;
     }
 
-    // Checks range (Manhattan distance)
+    // Checks if an enemy at (ex,ey) is in tower range
     method boolean inRange(int ex, int ey) {
-        if ((Math.abs(x - ex) + Math.abs(y - ey)) <= 4) {
-            return true;
-        }
+        var int dx, dy, d;
+        let dx = x - ex;
+        if (dx < 0) { let dx = 0 - dx; }
+        let dy = y - ey;
+        if (dy < 0) { let dy = 0 - dy; }
+        let d = dx + dy;
+
+        if (d < 5) { return true; }
         return false;
     }
 
-    // Shooting cooldown
+    // Returns true only when the tower may shoot; otherwise decreases cooldown.
     method boolean canShoot() {
         if (cooldown = 0) {
             let cooldown = 8;
@@ -43,4 +49,9 @@ class Tower {
 
     method int getX() { return x; }
     method int getY() { return y; }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
 }

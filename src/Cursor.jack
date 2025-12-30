@@ -1,47 +1,52 @@
-// Player-controlled cursor for placing towers
+// Cursor: controlled by the keyboard, used to place/remove towers on the grid.
 class Cursor {
-
     field int x, y;
     field int prevX, prevY;
 
-    constructor Cursor new(int sx, int sy) {
-        let x = sx;
-        let y = sy;
-        let prevX = sx;
-        let prevY = sy;
+    // Creates a cursor at a starting grid cell.
+    constructor Cursor new(int startX, int startY) {
+        let x = startX;
+        let y = startY;
+        let prevX = startX;
+        let prevY = startY;
         return this;
     }
 
-    // Moves cursor using arrow keys
+    // Moves the cursor by one cell according to arrow keys.
     method void move(int key) {
         let prevX = x;
         let prevY = y;
 
-        if (key = 130) { let y = y - 1; } // up
-        if (key = 131) { let y = y + 1; } // down
-        if (key = 132) { let x = x - 1; } // left
-        if (key = 133) { let x = x + 1; } // right
+        if (key = 130) { if (x > 0) { let x = x - 1; } }     // left
+        if (key = 132) { if (x < 31) { let x = x + 1; } }    // right
+        if (key = 131) { if (y > 0) { let y = y - 1; } }     // up
+        if (key = 133) { if (y < 15) { let y = y + 1; } }    // down
 
         return;
     }
 
-    // Draw cursor
+    // Draws the cursor as a hollow box around the current cell.
     method void draw() {
+        var int px, py;
+        let px = x * 16;
+        let py = y * 16;
+
         do Screen.setColor(true);
-        do Screen.drawRectangle(
-            x * 16 + 4, y * 16 + 4,
-            x * 16 + 11, y * 16 + 11
-        );
+        do Screen.drawRectangle(px, py, px + 15, py);         // top
+        do Screen.drawRectangle(px, py + 15, px + 15, py + 15); // bottom
+        do Screen.drawRectangle(px, py, px, py + 15);         // left
+        do Screen.drawRectangle(px + 15, py, px + 15, py + 15); // right
         return;
     }
 
-    // Erase cursor
-    method void erase(boolean onPath) {
-        do Screen.setColor(onPath);
-        do Screen.drawRectangle(
-            prevX * 16, prevY * 16,
-            prevX * 16 + 15, prevY * 16 + 15
-        );
+    // Erases the cursor from its previous cell by repainting the background.
+    method void erase(boolean prevOnPath) {
+        var int px, py;
+        let px = prevX * 16;
+        let py = prevY * 16;
+
+        do Screen.setColor(prevOnPath);
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
         return;
     }
 
@@ -49,4 +54,9 @@ class Cursor {
     method int getY() { return y; }
     method int getPrevX() { return prevX; }
     method int getPrevY() { return prevY; }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
 }

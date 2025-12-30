@@ -1,65 +1,76 @@
-// Manages game loop, waves, towers, enemy, and input
+// Game: main controller (map, waves, tower placement, enemy spawning, main loop).
 class Game {
-
     field boolean running;
     field Cursor cursor;
 
     field Array towers;
     field int towerCount;
 
-    field Enemy enemy;
+    field Array enemies;
+    field int enemyCount;
 
     field Array pathX;
     field Array pathY;
     field int pathLen;
 
+    field int spaceHeld;
+
     field int enemyTick;
-    field boolean spaceHeld;
+    field int enemyDelay;
 
     field int wave;
-    field int nextHp;
+    field int toSpawn;
+    field int spawned;
+    field int spawnTick;
+    field int spawnDelay;
 
+    // Builds the game state and allocates arrays.
     constructor Game new() {
         let running = true;
-
-        let cursor = Cursor.new(2, 2);
 
         let towers = Array.new(8);
         let towerCount = 0;
 
-        // fixed path
-        let pathLen = 6;
-        let pathX = Array.new(pathLen);
-        let pathY = Array.new(pathLen);
+        let enemies = Array.new(4);
+        let enemyCount = 0;
 
-        let pathX[0] = 0;  let pathY[0] = 6;
-        let pathX[1] = 10; let pathY[1] = 6;
-        let pathX[2] = 10; let pathY[2] = 2;
-        let pathX[3] = 20; let pathY[3] = 2;
-        let pathX[4] = 20; let pathY[4] = 6;
-        let pathX[5] = 31; let pathY[5] = 6;
+        // Create 4 enemy objects once
+        let enemies[0] = Enemy.new();
+        let enemies[1] = Enemy.new();
+        let enemies[2] = Enemy.new();
+        let enemies[3] = Enemy.new();
 
-        let wave = 1;
-        let nextHp = 5;
+        let cursor = Cursor.new(2, 2);
 
-        let enemy = Enemy.new(pathX[0], pathY[0], nextHp);
+        let pathX = Array.new(128);
+        let pathY = Array.new(128);
+        let pathLen = 0;
+
+        let spaceHeld = 0;
 
         let enemyTick = 0;
-        let spaceHeld = false;
+        let enemyDelay = 6;
+
+        let wave = 0;
+        let toSpawn = 0;
+        let spawned = 0;
+        let spawnTick = 0;
+        let spawnDelay = 10;
+
+        do Screen.clearScreen();
+        do buildPath();
+        do drawPath();
+        do startNextWave();
 
         return this;
     }
 
-    // Main game loop
+    // Main game loop.
     method void run() {
         var int key;
         var int idx;
 
-        do Screen.clearScreen();
-        do drawPath();
-
         while (running) {
-
             let key = Keyboard.keyPressed();
             if (key = 113) { let running = false; } // q
 
@@ -68,52 +79,47 @@ class Game {
             do cursor.move(key);
             do cursor.draw();
 
-            // space: place/remove tower
+            // space: place/remove tower (debounced)
             if (key = 32) {
-                if (~spaceHeld) {
-                    let spaceHeld = true;
+                if (spaceHeld = 0) {
+                    let spaceHeld = 1;
 
                     let idx = findTowerIndex(cursor.getX(), cursor.getY());
-
                     if (~(idx = -1)) {
                         do removeTowerAt(idx);
                     } else {
                         if (towerCount < 8) {
                             if (~isPathCell(cursor.getX(), cursor.getY())) {
-                                let towers[towerCount] =
-                                    Tower.new(cursor.getX(), cursor.getY());
+                                let towers[towerCount] = Tower.new(cursor.getX(), cursor.getY());
                                 let towerCount = towerCount + 1;
                             }
                         }
                     }
                 }
             } else {
-                let spaceHeld = false;
+                let spaceHeld = 0;
             }
+
+            // spawn logic
+            do handleSpawning();
 
             // enemy movement timing
             let enemyTick = enemyTick + 1;
-            if (enemyTick = 6) {
+            if (enemyTick = enemyDelay) {
                 let enemyTick = 0;
-
-                if (enemy.isAlive()) {
-                    do enemy.erase(isPathCell(enemy.getPrevX(), enemy.getPrevY()));
-                    do enemy.update(pathX, pathY, pathLen);
-                }
+                do stepEnemies();
             }
 
-            // combat
+            // combat + draw
             do towersAttack();
-
-            // redraw
-            if (enemy.isAlive()) {
-                do enemy.draw();
-            } else {
-                do startNextWave();
-            }
-
+            do drawEnemies();
             do redrawTowers();
             do drawHUD();
+
+            // wave progression
+            if (isWaveCleared()) {
+                do startNextWave();
+            }
 
             do Sys.wait(50);
         }
@@ -121,62 +127,202 @@ class Game {
         return;
     }
 
-    // Draws the fixed black path
-    method void drawPath() {
+    // Spawns enemies over time until reaching the wave target.
+    method void handleSpawning() {
+        var int hp;
+        var Enemy e;
+
+        if (spawned = toSpawn) { return; }
+        if (enemyCount = 4) { return; }
+
+        let spawnTick = spawnTick + 1;
+        if (spawnTick < spawnDelay) { return; }
+        let spawnTick = 0;
+
+        // base hp is 5, increases with wave
+        let hp = 5 + wave;
+
+        let e = enemies[enemyCount];
+        do e.reset(pathX[0], pathY[0], hp);
+
+        let enemyCount = enemyCount + 1;
+        let spawned = spawned + 1;
+
+        return;
+    }
+
+    // Moves all alive enemies one step and erases their previous position.
+    method void stepEnemies() {
         var int i;
+        var Enemy e;
+
         let i = 0;
+        while (i < enemyCount) {
+            let e = enemies[i];
 
-        do Screen.setColor(true);
+            if (e.isAlive()) {
+                do e.erase(isPathCell(e.getPrevX(), e.getPrevY()));
+                do e.step(pathX, pathY, pathLen);
 
-        while (i < pathLen - 1) {
-            do Screen.drawRectangle(
-                pathX[i] * 16,
-                pathY[i] * 16,
-                pathX[i + 1] * 16 + 15,
-                pathY[i + 1] * 16 + 15
-            );
+                // If it died by reaching the end, erase its current cell once
+                if (~e.isAlive()) {
+                    do e.erase(isPathCell(e.getX(), e.getY()));
+                }
+            }
+
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    // Towers shoot: each tower may damage the first enemy in range (if cooldown allows).
+    method void towersAttack() {
+        var int ti;
+        var int ei;
+        var Tower t;
+        var Enemy e;
+
+        let ti = 0;
+        while (ti < towerCount) {
+            let t = towers[ti];
+
+            if (t.canShoot()) {
+                let ei = 0;
+                while (ei < enemyCount) {
+                    let e = enemies[ei];
+
+                    if (e.isAlive()) {
+                        if (t.inRange(e.getX(), e.getY())) {
+                            do e.takeDamage(1);
+
+                            // if it died now, erase it immediately
+                            if (~e.isAlive()) {
+                                do e.erase(isPathCell(e.getX(), e.getY()));
+                            }
+
+                            let ei = enemyCount; // break inner loop
+                        }
+                    }
+
+                    let ei = ei + 1;
+                }
+            }
+
+            let ti = ti + 1;
+        }
+
+        return;
+    }
+
+    // Redraws all towers (cheap, but stable).
+    method void redrawTowers() {
+        var int i;
+        var Tower t;
+
+        let i = 0;
+        while (i < towerCount) {
+            let t = towers[i];
+            do t.draw();
             let i = i + 1;
         }
         return;
     }
 
-    // Returns true if cell is part of the path
-    method boolean isPathCell(int x, int y) {
+    // Draws all alive enemies.
+    method void drawEnemies() {
         var int i;
-        let i = 0;
+        var Enemy e;
 
-        while (i < pathLen) {
-            if ((pathX[i] = x) & (pathY[i] = y)) {
-                return true;
-            }
+        let i = 0;
+        while (i < enemyCount) {
+            let e = enemies[i];
+            if (e.isAlive()) { do e.draw(); }
             let i = i + 1;
         }
-        return false;
+        return;
     }
 
-    // Finds tower index at grid cell
-    method int findTowerIndex(int x, int y) {
+    // Returns true when all enemies of this wave were spawned and all are dead.
+    method boolean isWaveCleared() {
         var int i;
-        let i = 0;
+        var Enemy e;
 
-        while (i < towerCount) {
-            if ((towers[i].getX() = x) & (towers[i].getY() = y)) {
-                return i;
-            }
+        if (~(spawned = toSpawn)) { return false; }
+
+        let i = 0;
+        while (i < enemyCount) {
+            let e = enemies[i];
+            if (e.isAlive()) { return false; }
             let i = i + 1;
         }
+        return true;
+    }
+
+    // Starts the next wave: increases wave counter + enemy count target + speed.
+    method void startNextWave() {
+        do clearEnemyMarks();
+
+        let wave = wave + 1;
+
+        // up to 4 enemies per wave
+        let toSpawn = wave;
+        if (toSpawn > 4) { let toSpawn = 4; }
+
+        let spawned = 0;
+        let enemyCount = 0;
+
+        // make enemies slightly faster over time (min delay = 2)
+        let enemyDelay = 6 - (wave / 2);
+        if (enemyDelay < 2) { let enemyDelay = 2; }
+
+        // spawn enemies faster on higher waves (min delay = 4)
+        let spawnDelay = 12 - wave;
+        if (spawnDelay < 4) { let spawnDelay = 4; }
+
+        return;
+    }
+
+    // Clears tiny artifacts where enemies/hp bars were.
+    method void clearEnemyMarks() {
+        do drawPath();
+        do redrawTowers();
+        return;
+    }
+
+    // Finds the index of a tower at (x,y), or -1 if none.
+    method int findTowerIndex(int x, int y) {
+        var int i;
+        var Tower t;
+
+        let i = 0;
+        while (i < towerCount) {
+            let t = towers[i];
+
+            if ((t.getX() = x) & (t.getY() = y)) {
+                return i;
+            }
+
+            let i = i + 1;
+        }
+
         return -1;
     }
 
-    // Removes tower and shifts array
+    // Removes a tower by index and shifts the array left.
     method void removeTowerAt(int idx) {
         var int i;
+        var Tower t;
 
-        do Screen.setColor(false);
-        do drawCellRect(towers[idx].getX(), towers[idx].getY());
+        let t = towers[idx];
+
+        do Screen.setColor(isPathCell(t.getX(), t.getY()));
+        do drawCellRect(t.getX(), t.getY());
+
+        do t.dispose();
 
         let i = idx;
-        while (i < towerCount - 1) {
+        while (i < (towerCount - 1)) {
             let towers[i] = towers[i + 1];
             let i = i + 1;
         }
@@ -185,74 +331,144 @@ class Game {
         return;
     }
 
-    // Redraw all towers
-    method void redrawTowers() {
-        var int i;
-        let i = 0;
+    // Draws a filled 16x16 cell at grid coordinate.
+    method void drawCellRect(int gx, int gy) {
+        var int px;
+        var int py;
 
-        while (i < towerCount) {
-            do towers[i].draw();
-            let i = i + 1;
-        }
+        let px = gx * 16;
+        let py = gy * 16;
+        do Screen.drawRectangle(px, py, px + 15, py + 15);
         return;
     }
 
-    // Towers instantly damage enemy
-    method void towersAttack() {
+    // Builds the path arrays (one-cell wide) in grid coordinates.
+    method void buildPath() {
+        var int x;
+        var int y;
+
+        let pathLen = 0;
+
+        // segment 1: (0,9) -> (14,9)
+        let y = 9;
+        let x = 0;
+        while (x < 15) {
+            let pathX[pathLen] = x;
+            let pathY[pathLen] = y;
+            let pathLen = pathLen + 1;
+            let x = x + 1;
+        }
+
+        // segment 2: (14,9) -> (14,4)
+        let x = 14;
+        let y = 8;
+        while (y > 3) {
+            let pathX[pathLen] = x;
+            let pathY[pathLen] = y;
+            let pathLen = pathLen + 1;
+            let y = y - 1;
+        }
+
+        // segment 3: (14,4) -> (23,4)
+        let y = 4;
+        let x = 15;
+        while (x < 24) {
+            let pathX[pathLen] = x;
+            let pathY[pathLen] = y;
+            let pathLen = pathLen + 1;
+            let x = x + 1;
+        }
+
+        // segment 4: (23,4) -> (23,9)
+        let x = 23;
+        let y = 5;
+        while (y < 10) {
+            let pathX[pathLen] = x;
+            let pathY[pathLen] = y;
+            let pathLen = pathLen + 1;
+            let y = y + 1;
+        }
+
+        // segment 5: (23,9) -> (31,9)
+        let y = 9;
+        let x = 24;
+        while (x < 32) {
+            let pathX[pathLen] = x;
+            let pathY[pathLen] = y;
+            let pathLen = pathLen + 1;
+            let x = x + 1;
+        }
+
+        return;
+    }
+
+    // Draws the whole map (white background + black path).
+    method void drawPath() {
+        var int i;
+
+        do Screen.setColor(false);
+        do Screen.clearScreen();
+
+        do Screen.setColor(true);
+        let i = 0;
+        while (i < pathLen) {
+            do drawCellRect(pathX[i], pathY[i]);
+            let i = i + 1;
+        }
+
+        return;
+    }
+
+    // Checks if a given grid cell belongs to the path.
+    method boolean isPathCell(int gx, int gy) {
+        var int i;
+        let i = 0;
+
+        while (i < pathLen) {
+            if ((pathX[i] = gx) & (pathY[i] = gy)) { return true; }
+            let i = i + 1;
+        }
+
+        return false;
+    }
+
+    // Displays wave info (simple HUD).
+    method void drawHUD() {
+        do Output.moveCursor(0, 0);
+        do Output.printString("Wave: ");
+        do Output.printInt(wave);
+        do Output.printString("   ");
+
+        do Output.moveCursor(1, 0);
+        do Output.printString("Enemies: ");
+        do Output.printInt(toSpawn);
+        do Output.printString("   ");
+
+        return;
+    }
+
+    // Frees allocated objects.
+    method void dispose() {
         var int i;
         var Tower t;
-
-        if (~enemy.isAlive()) { return; }
+        var Enemy e;
 
         let i = 0;
         while (i < towerCount) {
             let t = towers[i];
-
-            if (t.inRange(enemy.getX(), enemy.getY())) {
-                if (t.canShoot()) {
-                    do enemy.takeDamage(1);
-
-                    if (~enemy.isAlive()) {
-                        do enemy.eraseCurrent(
-                            isPathCell(enemy.getX(), enemy.getY())
-                        );
-                        return;
-                    }
-                }
-            }
+            do t.dispose();
             let i = i + 1;
         }
-        return;
-    }
 
-    // Starts the next wave
-    method void startNextWave() {
-        let wave = wave + 1;
-        let nextHp = nextHp + 2;
+        let i = 0;
+        while (i < 4) {
+            let e = enemies[i];
+            do e.dispose();
+            let i = i + 1;
+        }
 
-        let enemy = Enemy.new(pathX[0], pathY[0], nextHp);
-        return;
-    }
-
-    // Draws wave number
-    method void drawHUD() {
-        do Screen.setColor(false);
-        do Screen.drawRectangle(0, 0, 80, 12);
-
-        do Screen.setColor(true);
-        do Output.moveCursor(0, 0);
-        do Output.printString("Wave: ");
-        do Output.printInt(wave);
-
-        return;
-    }
-
-    // Clears a single grid cell
-    method void drawCellRect(int x, int y) {
-        do Screen.drawRectangle(
-            x * 16, y * 16,
-            x * 16 + 15, y * 16 + 15
-        );
+        do cursor.dispose();
+        do Memory.deAlloc(this);
         return;
     }
 }
